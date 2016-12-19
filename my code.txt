@@ -1,0 +1,142 @@
+/*
+    Zach's code mashup for controlling his 3d printer's LED ring.
+    Swaps between two modes: automatic and manual.
+    Analog control for manual imput and digital control for the
+    automatic light dimming to reduce errors and have defined
+    lighting levels.
+*/
+
+//digtial dim constants/variables
+
+#define LDRpin1 7  // pin where we connect LDR and resistor
+#define LDRpin2 8  // pin where we connect LDR and resistor
+
+int LDRValue1 = 0; // result of reading the digital pin
+int LDRValue2 = 0; // result of reading the digital pin
+const int ledPin = 9; // led ring at pin 9
+
+
+// manual dim constants/variables
+
+const int analogInPin = A2;  // Analog input pin that the slide potentiometer is attached to
+//const int analogOutPin = 9; // Analog output pin that the LED ring is attached to (redundant in merged code)
+
+int sensorValue = 0;        // value read from the slide pot
+int outputValue = 0;        // value output to the PWM (analog out) for the led ring
+
+// button state constants/variables
+const int  buttonPin = 2;    // the pin that the pushbutton is attached to
+const int buttonStatePin = 13;       // the pin that the LED is attached to to determine current function (manual on/off)
+const int manualButtonStatePin = 4; // led on slide potentiometer
+
+int buttonPushCounter = 0;   // counter for the number of button presses
+int buttonState = 0;         // current state of the button
+int lastButtonState = 0;     // previous state of the button
+
+void setup() {
+  // initialize the button pin as a input:
+  pinMode(buttonPin, INPUT);
+  // initialize the LED as an output:
+  pinMode(buttonStatePin, OUTPUT);
+  // initialize the led on slide pot as output:
+  pinMode(manualButtonStatePin, OUTPUT);
+  // initialize serial communication:
+  Serial.begin(9600);
+
+  // digital dim setup
+  pinMode(ledPin, OUTPUT); // sets led ring as output
+}
+
+
+void loop() {
+  // read the pushbutton input pin:
+  buttonState = digitalRead(buttonPin);
+
+  // compare the buttonState to its previous state
+  if (buttonState != lastButtonState) {
+    // if the state has changed, increment the counter
+    if (buttonState == HIGH) {
+      // if the current state is HIGH then the button
+      // wend from off to on:
+      buttonPushCounter = 1 - buttonPushCounter;
+      Serial.println("on");
+      Serial.print("Mode:  "); //helps me determine which mode the program is currently in. alternates between 1 and 0.
+      Serial.println(buttonPushCounter); // displays 1 or 0
+    }
+    else {
+      // if the current state is LOW then the button
+      // went from on to off:
+      Serial.println("off");
+    }
+  }
+  // save the current state as the last state,
+  //for next time through the loop
+  lastButtonState = buttonState;
+
+
+  // changes function based on state of pushbutton counter
+  if (buttonPushCounter == 0) {
+    digitalWrite(buttonStatePin, HIGH);// enables the automatic mode button led
+    digitalWrite(manualButtonStatePin, LOW); // turns off the manual led on the linear pot
+    adjustBrightness(); // enables the automatic brightness function
+  } else {
+    digitalWrite(buttonStatePin, LOW); //turns off the automatic mode button led
+    digitalWrite(manualButtonStatePin, HIGH); // enables the manual led on the linear pot
+    manualBrightness(); //runs the manualBrightness funciton
+  }
+
+}
+
+
+// digital dim code (automatic brightness)
+void adjustBrightness() {
+  LDRValue1 = digitalRead(LDRpin1);// read the value from the LDR
+  LDRValue2 = digitalRead(LDRpin2);// read the value from the LDR
+
+  Serial.print(LDRValue1);         // print the LDR1 value to the serial port
+  Serial.print(" ");               // print a space
+  Serial.print(LDRValue2);         // print the LDR2 value to the serial port
+
+  if ((LDRValue1 == 1) && (LDRValue2 == 1)) {
+    Serial.print(" -> HIGH");
+    analogWrite(ledPin, 13);      // enables the lowest brightness for the led ring when the light of the room is brightest
+  }
+  else if ((LDRValue1 == 1) && (LDRValue2 == 0)) {
+    Serial.print(" -> MEDIUM");
+    analogWrite(ledPin, 126);     // enables the medium brightness for the led ring when the light in the room is medium brightness
+  }
+  else if ((LDRValue1 == 0) && (LDRValue2 == 0)) {
+    Serial.print(" -> LOW");
+    analogWrite(ledPin, 255);     // enables the brightest mode for the led ring when the room is darkest
+  }
+
+  Serial.println(" lighting");
+
+  delay(100);                    // wait a little
+}
+
+// manual brightness code
+
+void manualBrightness() {
+  // read the analog in value:
+  sensorValue = analogRead(analogInPin);
+  // map it to the range of the analog out (change these values to match the potentiometer better) :
+  outputValue = map(sensorValue, 140, 1013, 0, 255); 
+  // change the analog out value:
+  analogWrite(ledPin, outputValue);
+
+  // print the results to the serial monitor:
+  Serial.print("sensor = ");
+  Serial.print(sensorValue);
+  Serial.print("\t output = ");
+  Serial.println(outputValue);
+
+  // wait before the next loop
+  // for the analog-to-digital converter to settle
+  // after the last reading:
+  delay(100);
+}
+
+
+
+

@@ -1,0 +1,147 @@
+<pre>
+<font color="#95a5a6">/*</font>
+<font color="#95a5a6"> &nbsp;&nbsp;&nbsp;Zach's code mashup for controlling his 3d printer's LED ring.</font>
+<font color="#95a5a6"> &nbsp;&nbsp;&nbsp;Swaps between two modes: automatic and manual.</font>
+<font color="#95a5a6"> &nbsp;&nbsp;&nbsp;Analog control for manual imput and digital control for the</font>
+<font color="#95a5a6"> &nbsp;&nbsp;&nbsp;automatic light dimming to reduce errors and have defined</font>
+<font color="#95a5a6"> &nbsp;&nbsp;&nbsp;lighting levels.</font>
+<font color="#95a5a6">*/</font>
+
+<font color="#434f54">//digtial dim constants/variables</font>
+
+<font color="#5e6d03">#define</font> <font color="#000000">LDRpin1</font> <font color="#000000">7</font> &nbsp;<font color="#434f54">// pin where we connect LDR and resistor</font>
+<font color="#5e6d03">#define</font> <font color="#000000">LDRpin2</font> <font color="#000000">8</font> &nbsp;<font color="#434f54">// pin where we connect LDR and resistor</font>
+
+<font color="#00979c">int</font> <font color="#000000">LDRValue1</font> <font color="#434f54">=</font> <font color="#000000">0</font><font color="#000000">;</font> <font color="#434f54">// result of reading the digital pin</font>
+<font color="#00979c">int</font> <font color="#000000">LDRValue2</font> <font color="#434f54">=</font> <font color="#000000">0</font><font color="#000000">;</font> <font color="#434f54">// result of reading the digital pin</font>
+<font color="#00979c">const</font> <font color="#00979c">int</font> <font color="#000000">ledPin</font> <font color="#434f54">=</font> <font color="#000000">9</font><font color="#000000">;</font> <font color="#434f54">// led ring at pin 9</font>
+
+
+<font color="#434f54">// manual dim constants/variables</font>
+
+<font color="#00979c">const</font> <font color="#00979c">int</font> <font color="#000000">analogInPin</font> <font color="#434f54">=</font> <font color="#000000">A2</font><font color="#000000">;</font> &nbsp;<font color="#434f54">// Analog input pin that the slide potentiometer is attached to</font>
+<font color="#434f54">//const int analogOutPin = 9; // Analog output pin that the LED ring is attached to (redundant in merged code)</font>
+
+<font color="#00979c">int</font> <font color="#000000">sensorValue</font> <font color="#434f54">=</font> <font color="#000000">0</font><font color="#000000">;</font> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#434f54">// value read from the slide pot</font>
+<font color="#00979c">int</font> <font color="#000000">outputValue</font> <font color="#434f54">=</font> <font color="#000000">0</font><font color="#000000">;</font> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#434f54">// value output to the PWM (analog out) for the led ring</font>
+
+<font color="#434f54">// button state constants/variables</font>
+<font color="#00979c">const</font> <font color="#00979c">int</font> &nbsp;<font color="#000000">buttonPin</font> <font color="#434f54">=</font> <font color="#000000">2</font><font color="#000000">;</font> &nbsp;&nbsp;&nbsp;<font color="#434f54">// the pin that the pushbutton is attached to</font>
+<font color="#00979c">const</font> <font color="#00979c">int</font> <font color="#000000">buttonStatePin</font> <font color="#434f54">=</font> <font color="#000000">13</font><font color="#000000">;</font> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#434f54">// the pin that the LED is attached to to determine current function (manual on/off)</font>
+<font color="#00979c">const</font> <font color="#00979c">int</font> <font color="#000000">manualButtonStatePin</font> <font color="#434f54">=</font> <font color="#000000">4</font><font color="#000000">;</font> <font color="#434f54">// led on slide potentiometer</font>
+
+<font color="#00979c">int</font> <font color="#000000">buttonPushCounter</font> <font color="#434f54">=</font> <font color="#000000">0</font><font color="#000000">;</font> &nbsp;&nbsp;<font color="#434f54">// counter for the number of button presses</font>
+<font color="#00979c">int</font> <font color="#000000">buttonState</font> <font color="#434f54">=</font> <font color="#000000">0</font><font color="#000000">;</font> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#434f54">// current state of the button</font>
+<font color="#00979c">int</font> <font color="#000000">lastButtonState</font> <font color="#434f54">=</font> <font color="#000000">0</font><font color="#000000">;</font> &nbsp;&nbsp;&nbsp;&nbsp;<font color="#434f54">// previous state of the button</font>
+
+<font color="#00979c">void</font> <font color="#5e6d03">setup</font><font color="#000000">(</font><font color="#000000">)</font> <font color="#000000">{</font>
+ &nbsp;<font color="#434f54">// initialize the button pin as a input:</font>
+ &nbsp;<font color="#d35400">pinMode</font><font color="#000000">(</font><font color="#000000">buttonPin</font><font color="#434f54">,</font> <font color="#00979c">INPUT</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#434f54">// initialize the LED as an output:</font>
+ &nbsp;<font color="#d35400">pinMode</font><font color="#000000">(</font><font color="#000000">buttonStatePin</font><font color="#434f54">,</font> <font color="#00979c">OUTPUT</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#434f54">// initialize the led on slide pot as output:</font>
+ &nbsp;<font color="#d35400">pinMode</font><font color="#000000">(</font><font color="#000000">manualButtonStatePin</font><font color="#434f54">,</font> <font color="#00979c">OUTPUT</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#434f54">// initialize serial communication:</font>
+ &nbsp;<b><font color="#d35400">Serial</font></b><font color="#434f54">.</font><font color="#d35400">begin</font><font color="#000000">(</font><font color="#000000">9600</font><font color="#000000">)</font><font color="#000000">;</font>
+
+ &nbsp;<font color="#434f54">// digital dim setup</font>
+ &nbsp;<font color="#d35400">pinMode</font><font color="#000000">(</font><font color="#000000">ledPin</font><font color="#434f54">,</font> <font color="#00979c">OUTPUT</font><font color="#000000">)</font><font color="#000000">;</font> <font color="#434f54">// sets led ring as output</font>
+<font color="#000000">}</font>
+
+
+<font color="#00979c">void</font> <font color="#5e6d03">loop</font><font color="#000000">(</font><font color="#000000">)</font> <font color="#000000">{</font>
+ &nbsp;<font color="#434f54">// read the pushbutton input pin:</font>
+ &nbsp;<font color="#000000">buttonState</font> <font color="#434f54">=</font> <font color="#d35400">digitalRead</font><font color="#000000">(</font><font color="#000000">buttonPin</font><font color="#000000">)</font><font color="#000000">;</font>
+
+ &nbsp;<font color="#434f54">// compare the buttonState to its previous state</font>
+ &nbsp;<font color="#5e6d03">if</font> <font color="#000000">(</font><font color="#000000">buttonState</font> <font color="#434f54">!=</font> <font color="#000000">lastButtonState</font><font color="#000000">)</font> <font color="#000000">{</font>
+ &nbsp;&nbsp;&nbsp;<font color="#434f54">// if the state has changed, increment the counter</font>
+ &nbsp;&nbsp;&nbsp;<font color="#5e6d03">if</font> <font color="#000000">(</font><font color="#000000">buttonState</font> <font color="#434f54">==</font> <font color="#00979c">HIGH</font><font color="#000000">)</font> <font color="#000000">{</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#434f54">// if the current state is HIGH then the button</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#434f54">// wend from off to on:</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#000000">buttonPushCounter</font> <font color="#434f54">=</font> <font color="#000000">1</font> <font color="#434f54">-</font> <font color="#000000">buttonPushCounter</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b><font color="#d35400">Serial</font></b><font color="#434f54">.</font><font color="#d35400">println</font><font color="#000000">(</font><font color="#005c5f">"on"</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b><font color="#d35400">Serial</font></b><font color="#434f54">.</font><font color="#d35400">print</font><font color="#000000">(</font><font color="#005c5f">"Mode: &nbsp;"</font><font color="#000000">)</font><font color="#000000">;</font> <font color="#434f54">//helps me determine which mode the program is currently in. alternates between 1 and 0.</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b><font color="#d35400">Serial</font></b><font color="#434f54">.</font><font color="#d35400">println</font><font color="#000000">(</font><font color="#000000">buttonPushCounter</font><font color="#000000">)</font><font color="#000000">;</font> <font color="#434f54">// displays 1 or 0</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">}</font>
+ &nbsp;&nbsp;&nbsp;<font color="#5e6d03">else</font> <font color="#000000">{</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#434f54">// if the current state is LOW then the button</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#434f54">// went from on to off:</font>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b><font color="#d35400">Serial</font></b><font color="#434f54">.</font><font color="#d35400">println</font><font color="#000000">(</font><font color="#005c5f">"off"</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">}</font>
+ &nbsp;<font color="#000000">}</font>
+ &nbsp;<font color="#434f54">// save the current state as the last state,</font>
+ &nbsp;<font color="#434f54">//for next time through the loop</font>
+ &nbsp;<font color="#000000">lastButtonState</font> <font color="#434f54">=</font> <font color="#000000">buttonState</font><font color="#000000">;</font>
+
+
+ &nbsp;<font color="#434f54">// changes function based on state of pushbutton counter</font>
+ &nbsp;<font color="#5e6d03">if</font> <font color="#000000">(</font><font color="#000000">buttonPushCounter</font> <font color="#434f54">==</font> <font color="#000000">0</font><font color="#000000">)</font> <font color="#000000">{</font>
+ &nbsp;&nbsp;&nbsp;<font color="#d35400">digitalWrite</font><font color="#000000">(</font><font color="#000000">buttonStatePin</font><font color="#434f54">,</font> <font color="#00979c">HIGH</font><font color="#000000">)</font><font color="#000000">;</font><font color="#434f54">// enables the automatic mode button led</font>
+ &nbsp;&nbsp;&nbsp;<font color="#d35400">digitalWrite</font><font color="#000000">(</font><font color="#000000">manualButtonStatePin</font><font color="#434f54">,</font> <font color="#00979c">LOW</font><font color="#000000">)</font><font color="#000000">;</font> <font color="#434f54">// turns off the manual led on the linear pot</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">adjustBrightness</font><font color="#000000">(</font><font color="#000000">)</font><font color="#000000">;</font> <font color="#434f54">// enables the automatic brightness function</font>
+ &nbsp;<font color="#000000">}</font> <font color="#5e6d03">else</font> <font color="#000000">{</font>
+ &nbsp;&nbsp;&nbsp;<font color="#d35400">digitalWrite</font><font color="#000000">(</font><font color="#000000">buttonStatePin</font><font color="#434f54">,</font> <font color="#00979c">LOW</font><font color="#000000">)</font><font color="#000000">;</font> <font color="#434f54">//turns off the automatic mode button led</font>
+ &nbsp;&nbsp;&nbsp;<font color="#d35400">digitalWrite</font><font color="#000000">(</font><font color="#000000">manualButtonStatePin</font><font color="#434f54">,</font> <font color="#00979c">HIGH</font><font color="#000000">)</font><font color="#000000">;</font> <font color="#434f54">// enables the manual led on the linear pot</font>
+ &nbsp;&nbsp;&nbsp;<font color="#000000">manualBrightness</font><font color="#000000">(</font><font color="#000000">)</font><font color="#000000">;</font> <font color="#434f54">//runs the manualBrightness funciton</font>
+ &nbsp;<font color="#000000">}</font>
+
+<font color="#000000">}</font>
+
+
+<font color="#434f54">// digital dim code (automatic brightness)</font>
+<font color="#00979c">void</font> <font color="#000000">adjustBrightness</font><font color="#000000">(</font><font color="#000000">)</font> <font color="#000000">{</font>
+ &nbsp;<font color="#000000">LDRValue1</font> <font color="#434f54">=</font> <font color="#d35400">digitalRead</font><font color="#000000">(</font><font color="#000000">LDRpin1</font><font color="#000000">)</font><font color="#000000">;</font><font color="#434f54">// read the value from the LDR</font>
+ &nbsp;<font color="#000000">LDRValue2</font> <font color="#434f54">=</font> <font color="#d35400">digitalRead</font><font color="#000000">(</font><font color="#000000">LDRpin2</font><font color="#000000">)</font><font color="#000000">;</font><font color="#434f54">// read the value from the LDR</font>
+
+ &nbsp;<b><font color="#d35400">Serial</font></b><font color="#434f54">.</font><font color="#d35400">print</font><font color="#000000">(</font><font color="#000000">LDRValue1</font><font color="#000000">)</font><font color="#000000">;</font> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#434f54">// print the LDR1 value to the serial port</font>
+ &nbsp;<b><font color="#d35400">Serial</font></b><font color="#434f54">.</font><font color="#d35400">print</font><font color="#000000">(</font><font color="#005c5f">" "</font><font color="#000000">)</font><font color="#000000">;</font> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#434f54">// print a space</font>
+ &nbsp;<b><font color="#d35400">Serial</font></b><font color="#434f54">.</font><font color="#d35400">print</font><font color="#000000">(</font><font color="#000000">LDRValue2</font><font color="#000000">)</font><font color="#000000">;</font> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#434f54">// print the LDR2 value to the serial port</font>
+
+ &nbsp;<font color="#5e6d03">if</font> <font color="#000000">(</font><font color="#000000">(</font><font color="#000000">LDRValue1</font> <font color="#434f54">==</font> <font color="#000000">1</font><font color="#000000">)</font> <font color="#434f54">&&</font> <font color="#000000">(</font><font color="#000000">LDRValue2</font> <font color="#434f54">==</font> <font color="#000000">1</font><font color="#000000">)</font><font color="#000000">)</font> <font color="#000000">{</font>
+ &nbsp;&nbsp;&nbsp;<b><font color="#d35400">Serial</font></b><font color="#434f54">.</font><font color="#d35400">print</font><font color="#000000">(</font><font color="#005c5f">" -&gt; HIGH"</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;<font color="#d35400">analogWrite</font><font color="#000000">(</font><font color="#000000">ledPin</font><font color="#434f54">,</font> <font color="#000000">13</font><font color="#000000">)</font><font color="#000000">;</font> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#434f54">// enables the lowest brightness for the led ring when the light of the room is brightest</font>
+ &nbsp;<font color="#000000">}</font>
+ &nbsp;<font color="#5e6d03">else</font> <font color="#5e6d03">if</font> <font color="#000000">(</font><font color="#000000">(</font><font color="#000000">LDRValue1</font> <font color="#434f54">==</font> <font color="#000000">1</font><font color="#000000">)</font> <font color="#434f54">&&</font> <font color="#000000">(</font><font color="#000000">LDRValue2</font> <font color="#434f54">==</font> <font color="#000000">0</font><font color="#000000">)</font><font color="#000000">)</font> <font color="#000000">{</font>
+ &nbsp;&nbsp;&nbsp;<b><font color="#d35400">Serial</font></b><font color="#434f54">.</font><font color="#d35400">print</font><font color="#000000">(</font><font color="#005c5f">" -&gt; MEDIUM"</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;<font color="#d35400">analogWrite</font><font color="#000000">(</font><font color="#000000">ledPin</font><font color="#434f54">,</font> <font color="#000000">126</font><font color="#000000">)</font><font color="#000000">;</font> &nbsp;&nbsp;&nbsp;&nbsp;<font color="#434f54">// enables the medium brightness for the led ring when the light in the room is medium brightness</font>
+ &nbsp;<font color="#000000">}</font>
+ &nbsp;<font color="#5e6d03">else</font> <font color="#5e6d03">if</font> <font color="#000000">(</font><font color="#000000">(</font><font color="#000000">LDRValue1</font> <font color="#434f54">==</font> <font color="#000000">0</font><font color="#000000">)</font> <font color="#434f54">&&</font> <font color="#000000">(</font><font color="#000000">LDRValue2</font> <font color="#434f54">==</font> <font color="#000000">0</font><font color="#000000">)</font><font color="#000000">)</font> <font color="#000000">{</font>
+ &nbsp;&nbsp;&nbsp;<b><font color="#d35400">Serial</font></b><font color="#434f54">.</font><font color="#d35400">print</font><font color="#000000">(</font><font color="#005c5f">" -&gt; LOW"</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;&nbsp;&nbsp;<font color="#d35400">analogWrite</font><font color="#000000">(</font><font color="#000000">ledPin</font><font color="#434f54">,</font> <font color="#000000">255</font><font color="#000000">)</font><font color="#000000">;</font> &nbsp;&nbsp;&nbsp;&nbsp;<font color="#434f54">// enables the brightest mode for the led ring when the room is darkest</font>
+ &nbsp;<font color="#000000">}</font>
+
+ &nbsp;<b><font color="#d35400">Serial</font></b><font color="#434f54">.</font><font color="#d35400">println</font><font color="#000000">(</font><font color="#005c5f">" lighting"</font><font color="#000000">)</font><font color="#000000">;</font>
+
+ &nbsp;<font color="#d35400">delay</font><font color="#000000">(</font><font color="#000000">100</font><font color="#000000">)</font><font color="#000000">;</font> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#434f54">// wait a little</font>
+<font color="#000000">}</font>
+
+<font color="#434f54">// manual brightness code</font>
+
+<font color="#00979c">void</font> <font color="#000000">manualBrightness</font><font color="#000000">(</font><font color="#000000">)</font> <font color="#000000">{</font>
+ &nbsp;<font color="#434f54">// read the analog in value:</font>
+ &nbsp;<font color="#000000">sensorValue</font> <font color="#434f54">=</font> <font color="#d35400">analogRead</font><font color="#000000">(</font><font color="#000000">analogInPin</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<font color="#434f54">// map it to the range of the analog out (change these values to match the potentiometer better) :</font>
+ &nbsp;<font color="#000000">outputValue</font> <font color="#434f54">=</font> <font color="#d35400">map</font><font color="#000000">(</font><font color="#000000">sensorValue</font><font color="#434f54">,</font> <font color="#000000">140</font><font color="#434f54">,</font> <font color="#000000">1013</font><font color="#434f54">,</font> <font color="#000000">0</font><font color="#434f54">,</font> <font color="#000000">255</font><font color="#000000">)</font><font color="#000000">;</font> 
+ &nbsp;<font color="#434f54">// change the analog out value:</font>
+ &nbsp;<font color="#d35400">analogWrite</font><font color="#000000">(</font><font color="#000000">ledPin</font><font color="#434f54">,</font> <font color="#000000">outputValue</font><font color="#000000">)</font><font color="#000000">;</font>
+
+ &nbsp;<font color="#434f54">// print the results to the serial monitor:</font>
+ &nbsp;<b><font color="#d35400">Serial</font></b><font color="#434f54">.</font><font color="#d35400">print</font><font color="#000000">(</font><font color="#005c5f">"sensor = "</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<b><font color="#d35400">Serial</font></b><font color="#434f54">.</font><font color="#d35400">print</font><font color="#000000">(</font><font color="#000000">sensorValue</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<b><font color="#d35400">Serial</font></b><font color="#434f54">.</font><font color="#d35400">print</font><font color="#000000">(</font><font color="#005c5f">"\t output = "</font><font color="#000000">)</font><font color="#000000">;</font>
+ &nbsp;<b><font color="#d35400">Serial</font></b><font color="#434f54">.</font><font color="#d35400">println</font><font color="#000000">(</font><font color="#000000">outputValue</font><font color="#000000">)</font><font color="#000000">;</font>
+
+ &nbsp;<font color="#434f54">// wait before the next loop</font>
+ &nbsp;<font color="#434f54">// for the analog-to-digital converter to settle</font>
+ &nbsp;<font color="#434f54">// after the last reading:</font>
+ &nbsp;<font color="#d35400">delay</font><font color="#000000">(</font><font color="#000000">100</font><font color="#000000">)</font><font color="#000000">;</font>
+<font color="#000000">}</font>
+
+
+
+
+
+
+
+</pre>
